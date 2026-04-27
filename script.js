@@ -99,59 +99,49 @@ function speakIntro(lang) {
   const q = quotes[current];
   const text = `${q.quote}。出處：${q.source}。地點：${q.location}。價值觀：${q.value}。意思：${q.meaning} 小典故：${q.story}`;
   
+  // 停止先前的語音
   window.speechSynthesis.cancel();
+  
   currentUtterance = new SpeechSynthesisUtterance(text);
   
-  // 雙重保險：如果按下的瞬間清單是空的，再抓一次
-  if (speechVoices.length === 0) {
-    loadVoices();
-  }
-
-  currentUtterance.rate = 1.0; 
-  currentUtterance.pitch = 1.0;
-
+  // 取得裝置當前真正擁有的語音清單
+  const voices = window.speechSynthesis.getVoices();
   let targetVoice = null;
 
   if (lang === 'zh-CN') {
-    // 尋找普通話 (包含台灣國語、拼音 cmn、iOS 的 Ting-Ting 等)
-    targetVoice = speechVoices.find(v => {
-      const vLang = v.lang.toLowerCase();
-      return vLang.includes('zh-cn') || 
-             vLang.includes('zh-tw') || 
-             vLang.includes('cmn') || 
-             v.name.includes('Mandarin') || 
-             v.name.includes('Ting-Ting') || 
-             v.name.includes('Mei-Jia') ||
-             v.name.includes('普通话') ||
-             v.name.includes('國語');
-    });
+    // 【終極解法】
+    // 1. 先找有沒有正統普通話 (zh-CN, zh-Hans-CN)
+    // 2. 如果沒有，退而求其次找台灣國語 (zh-TW, zh-Hant-TW) -> 大多數港版手機有這個！
+    targetVoice = voices.find(v => v.lang === 'zh-CN' || v.lang === 'zh-Hans-CN') ||
+                  voices.find(v => v.lang === 'zh-TW' || v.lang === 'zh-Hant-TW') ||
+                  voices.find(v => v.name.toLowerCase().includes('mandarin'));
     
-    // 【關鍵修正】強制把 utterance 的 lang 設定為找到的那個語音的 lang
-    // 這樣瀏覽器就不會因為標籤不合而跳回粵語
-    currentUtterance.lang = targetVoice ? targetVoice.lang : 'zh-CN';
+    // 【最重要的一行】
+    // 必須把任務的 lang 設定為裝置真正擁有的那個語言標籤。
+    // 如果連 targetVoice 都找不到，我們硬塞 'zh-TW' 給它，這在 iOS 上的成功率遠高於 'zh-CN'
+    currentUtterance.lang = targetVoice ? targetVoice.lang : 'zh-TW';
 
   } else if (lang === 'zh-HK') {
-    // 尋找粵語
-    targetVoice = speechVoices.find(v => {
-      const vLang = v.lang.toLowerCase();
-      return vLang.includes('zh-hk') || 
-             vLang.includes('yue') || 
-             v.name.includes('Cantonese') || 
-             v.name.includes('Sin-Ji') || 
-             v.name.includes('粵語') ||
-             v.name.includes('广东话');
-    });
-    
+    // 粵語邏輯
+    targetVoice = voices.find(v => v.lang.includes('zh-HK') || v.name.toLowerCase().includes('cantonese'));
     currentUtterance.lang = targetVoice ? targetVoice.lang : 'zh-HK';
   }
 
-  // 明確指定語音物件
+  // 如果有找到明確的語音設定檔，就掛載上去
   if (targetVoice) {
     currentUtterance.voice = targetVoice;
   }
+  
+  // 確保語速和音調為預設值，否則 iOS 會罷工
+  currentUtterance.rate = 1.0;
+  currentUtterance.pitch = 1.0;
 
+  // 播放
   window.speechSynthesis.speak(currentUtterance);
 }
+
+
+
 function buildQuiz(){
   const q=quotes[current];
   const pool=qTemplates.map(t=>({
