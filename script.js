@@ -1,5 +1,11 @@
 let currentUtterance = null;
 
+let speechVoices = [];
+
+function loadVoices() {
+  speechVoices = window.speechSynthesis.getVoices();
+}
+
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => {
     window.speechSynthesis.getVoices();
@@ -83,56 +89,69 @@ function renderMeaning(){
   renderQuiz('inlineQuiz');
 }
 
+if ('speechSynthesis' in window) {
+  loadVoices();
+  // 當系統語音準備好時，更新清單
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 function speakIntro(lang) {
   const q = quotes[current];
   const text = `${q.quote}。出處：${q.source}。地點：${q.location}。價值觀：${q.value}。意思：${q.meaning} 小典故：${q.story}`;
   
-  // 停止目前正在播放的任何語音
   window.speechSynthesis.cancel();
-
-  // 把新的語音任務賦值給「全域變數」，保護它不被系統強制清除
   currentUtterance = new SpeechSynthesisUtterance(text);
   
-  // 設定語言
-  currentUtterance.lang = lang; 
-  
-  // 【重要】將語速和音調改回預設值 1.0，避免部分手機的語音引擎罷工
+  // 雙重保險：如果按下的瞬間清單是空的，再抓一次
+  if (speechVoices.length === 0) {
+    loadVoices();
+  }
+
   currentUtterance.rate = 1.0; 
   currentUtterance.pitch = 1.0;
 
-  const voices = window.speechSynthesis.getVoices();
   let targetVoice = null;
 
-  // 使用更寬鬆的條件尋找發音人
   if (lang === 'zh-CN') {
-    // 尋找普通話 (iOS 常見名稱為 Ting-Ting，其他系統可能包含 Mandarin 或 zh-CN)
-    targetVoice = voices.find(v => 
-      v.lang.replace('_', '-').toLowerCase() === 'zh-cn' || 
-      v.name.includes('Mandarin') || 
-      v.name.includes('Ting-Ting') || 
-      v.name.includes('普通话') ||
-      v.name.includes('國語')
-    );
+    // 尋找普通話 (包含台灣國語、拼音 cmn、iOS 的 Ting-Ting 等)
+    targetVoice = speechVoices.find(v => {
+      const vLang = v.lang.toLowerCase();
+      return vLang.includes('zh-cn') || 
+             vLang.includes('zh-tw') || 
+             vLang.includes('cmn') || 
+             v.name.includes('Mandarin') || 
+             v.name.includes('Ting-Ting') || 
+             v.name.includes('Mei-Jia') ||
+             v.name.includes('普通话') ||
+             v.name.includes('國語');
+    });
+    
+    // 【關鍵修正】強制把 utterance 的 lang 設定為找到的那個語音的 lang
+    // 這樣瀏覽器就不會因為標籤不合而跳回粵語
+    currentUtterance.lang = targetVoice ? targetVoice.lang : 'zh-CN';
+
   } else if (lang === 'zh-HK') {
-    // 尋找粵語 (iOS 常見名稱為 Sin-Ji)
-    targetVoice = voices.find(v => 
-      v.lang.replace('_', '-').toLowerCase() === 'zh-hk' || 
-      v.name.includes('Cantonese') || 
-      v.name.includes('Sin-Ji') || 
-      v.name.includes('粵語') ||
-      v.name.includes('广东话')
-    );
+    // 尋找粵語
+    targetVoice = speechVoices.find(v => {
+      const vLang = v.lang.toLowerCase();
+      return vLang.includes('zh-hk') || 
+             vLang.includes('yue') || 
+             v.name.includes('Cantonese') || 
+             v.name.includes('Sin-Ji') || 
+             v.name.includes('粵語') ||
+             v.name.includes('广东话');
+    });
+    
+    currentUtterance.lang = targetVoice ? targetVoice.lang : 'zh-HK';
   }
 
-  // 如果有找到對應的聲音就指定，沒找到就交給手機系統根據 lang 屬性自行決定
+  // 明確指定語音物件
   if (targetVoice) {
     currentUtterance.voice = targetVoice;
   }
 
-  // 執行播放
   window.speechSynthesis.speak(currentUtterance);
 }
-
 function buildQuiz(){
   const q=quotes[current];
   const pool=qTemplates.map(t=>({
