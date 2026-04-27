@@ -1,4 +1,4 @@
-
+let currentUtterance = null;
 
 if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => {
@@ -87,47 +87,50 @@ function speakIntro(lang) {
   const q = quotes[current];
   const text = `${q.quote}。出處：${q.source}。地點：${q.location}。價值觀：${q.value}。意思：${q.meaning} 小典故：${q.story}`;
   
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  // 停止目前正在播放的任何語音
+  window.speechSynthesis.cancel();
+
+  // 把新的語音任務賦值給「全域變數」，保護它不被系統強制清除
+  currentUtterance = new SpeechSynthesisUtterance(text);
   
-  // 標準化 lang 的格式 (例如：確保 iOS/Android 兼容)
-  u.lang = lang; 
-  u.rate = 0.9; 
-  u.pitch = 1.05;
+  // 設定語言
+  currentUtterance.lang = lang; 
+  
+  // 【重要】將語速和音調改回預設值 1.0，避免部分手機的語音引擎罷工
+  currentUtterance.rate = 1.0; 
+  currentUtterance.pitch = 1.0;
 
-  const voices = speechSynthesis.getVoices();
+  const voices = window.speechSynthesis.getVoices();
+  let targetVoice = null;
 
-  // 更嚴謹的語音匹配邏輯
-  let targetVoice = voices.find(x => x.lang.replace('_', '-').toLowerCase() === lang.toLowerCase());
-
-  // 如果找不到完全符合的標籤，針對普通話及粵語進行更聰明的關鍵字或相近地區匹配
-  if (!targetVoice) {
-    if (lang === 'zh-CN') {
-      // 普通話後備：尋找台灣國語，或名稱中帶有普通話/Mandarin的發音人
-      targetVoice = voices.find(x => 
-        x.lang.replace('_', '-').toLowerCase() === 'zh-tw' || 
-        x.name.includes('Mandarin') || 
-        x.name.includes('普通话') || 
-        x.name.includes('國語')
-      );
-    } else if (lang === 'zh-HK') {
-      // 粵語後備：尋找名稱中帶有粵語/Cantonese的發音人
-      targetVoice = voices.find(x => 
-        x.lang.replace('_', '-').toLowerCase() === 'yue-hk' || 
-        x.name.includes('Cantonese') || 
-        x.name.includes('粵語') || 
-        x.name.includes('广东话')
-      );
-    }
+  // 使用更寬鬆的條件尋找發音人
+  if (lang === 'zh-CN') {
+    // 尋找普通話 (iOS 常見名稱為 Ting-Ting，其他系統可能包含 Mandarin 或 zh-CN)
+    targetVoice = voices.find(v => 
+      v.lang.replace('_', '-').toLowerCase() === 'zh-cn' || 
+      v.name.includes('Mandarin') || 
+      v.name.includes('Ting-Ting') || 
+      v.name.includes('普通话') ||
+      v.name.includes('國語')
+    );
+  } else if (lang === 'zh-HK') {
+    // 尋找粵語 (iOS 常見名稱為 Sin-Ji)
+    targetVoice = voices.find(v => 
+      v.lang.replace('_', '-').toLowerCase() === 'zh-hk' || 
+      v.name.includes('Cantonese') || 
+      v.name.includes('Sin-Ji') || 
+      v.name.includes('粵語') ||
+      v.name.includes('广东话')
+    );
   }
 
-  // 只有在確實找到適合的發音人時才強制指定 voice，
-  // 否則放空讓行動裝置瀏覽器依賴 u.lang 決定預設聲音，避免因錯配而靜音
+  // 如果有找到對應的聲音就指定，沒找到就交給手機系統根據 lang 屬性自行決定
   if (targetVoice) {
-    u.voice = targetVoice;
+    currentUtterance.voice = targetVoice;
   }
 
-  speechSynthesis.speak(u);
+  // 執行播放
+  window.speechSynthesis.speak(currentUtterance);
 }
 
 function buildQuiz(){
