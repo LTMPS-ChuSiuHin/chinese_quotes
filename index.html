@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>藍循中華名句小學堂</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="ink-bg"></div>
+  <header class="hero">
+    <div class="badge">藍田循道衞理小學</div>
+    <h1>藍循中華名句小學堂</h1>
+    <p>藍循的同學不妨到校園梯間參觀「中華名句」牌匾，細讀名句、了解典故，從中汲取智慧！</p>
+  </header>
+
+  <main class="app-shell">
+    <section class="grid-panel" aria-label="中華名句牌匾">
+      <p class="hint">請按一塊牌匾圖片，查看名句意思、典故及挑戰題。</p>
+      <div id="quoteGrid" class="quote-grid"></div>
+    </section>
+
+    <aside class="detail-panel" aria-label="名句簡介">
+      <div id="emptyState" class="empty-state">
+        <div class="seal">文</div>
+        <h2>請先點選一塊牌匾</h2>
+        <p>按下左邊／上方的牌匾圖片後，這裡會顯示地點、價值觀、意思、典故和挑戰題。</p>
+      </div>
+      <div id="meaningContent"></div>
+      <div id="inlineQuiz"></div>
+    </aside>
+  </main>
+
+  <footer>藍循中華名句小學堂</footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
