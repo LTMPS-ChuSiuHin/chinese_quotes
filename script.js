@@ -1,3 +1,11 @@
+
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
+}
+
 const quotes = [
  {img:'18801C7A-1217-413B-A6BB-E080640F6FCF.jpeg', quote:'克己復禮為仁。', source:'《論語・顏淵》', location:'前梯 6/F 往 天台', value:'有禮', meaning:'能約束自己，按禮儀和規矩做事，就是仁德的表現。', story:'孔子回答學生顏淵時，提出人要先管理好自己，尊重禮儀，才可成為有仁德的人。'},
  {img:'C17A5B6D-73D8-45B1-A151-755E5A91ABF0.jpeg', quote:'風聲雨聲讀書聲，聲聲入耳；家事國事天下事，事事關心。', source:'顧憲成《題東林書院》', location:'前梯 5/F 往 6/F', value:'國民身份認同', meaning:'我們要用心讀書，也要關心家庭、國家和世界的事情。', story:'東林書院重視讀書人的責任，提醒學生學習不只在課本，也要關心社會和國家。'},
@@ -75,15 +83,50 @@ function renderMeaning(){
   renderQuiz('inlineQuiz');
 }
 
-function speakIntro(lang){
-  const q=quotes[current];
-  const text=`${q.quote}。出處：${q.source}。地點：${q.location}。價值觀：${q.value}。意思：${q.meaning} 小典故：${q.story}`;
+function speakIntro(lang) {
+  const q = quotes[current];
+  const text = `${q.quote}。出處：${q.source}。地點：${q.location}。價值觀：${q.value}。意思：${q.meaning} 小典故：${q.story}`;
+  
   speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang=lang; u.rate=.9; u.pitch=1.05;
-  const voices=speechSynthesis.getVoices();
-  const v=voices.find(x=>x.lang===lang)||voices.find(x=>x.lang.startsWith(lang.slice(0,2)));
-  if(v) u.voice=v;
+  const u = new SpeechSynthesisUtterance(text);
+  
+  // 標準化 lang 的格式 (例如：確保 iOS/Android 兼容)
+  u.lang = lang; 
+  u.rate = 0.9; 
+  u.pitch = 1.05;
+
+  const voices = speechSynthesis.getVoices();
+
+  // 更嚴謹的語音匹配邏輯
+  let targetVoice = voices.find(x => x.lang.replace('_', '-').toLowerCase() === lang.toLowerCase());
+
+  // 如果找不到完全符合的標籤，針對普通話及粵語進行更聰明的關鍵字或相近地區匹配
+  if (!targetVoice) {
+    if (lang === 'zh-CN') {
+      // 普通話後備：尋找台灣國語，或名稱中帶有普通話/Mandarin的發音人
+      targetVoice = voices.find(x => 
+        x.lang.replace('_', '-').toLowerCase() === 'zh-tw' || 
+        x.name.includes('Mandarin') || 
+        x.name.includes('普通话') || 
+        x.name.includes('國語')
+      );
+    } else if (lang === 'zh-HK') {
+      // 粵語後備：尋找名稱中帶有粵語/Cantonese的發音人
+      targetVoice = voices.find(x => 
+        x.lang.replace('_', '-').toLowerCase() === 'yue-hk' || 
+        x.name.includes('Cantonese') || 
+        x.name.includes('粵語') || 
+        x.name.includes('广东话')
+      );
+    }
+  }
+
+  // 只有在確實找到適合的發音人時才強制指定 voice，
+  // 否則放空讓行動裝置瀏覽器依賴 u.lang 決定預設聲音，避免因錯配而靜音
+  if (targetVoice) {
+    u.voice = targetVoice;
+  }
+
   speechSynthesis.speak(u);
 }
 
